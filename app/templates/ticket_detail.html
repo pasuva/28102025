@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Ticket {{ ticket.primary_key }}{% endblock %}
+{% block content %}
+<h2>Ticket {{ ticket.primary_key }}</h2>
+<p><b>Estado:</b> {{ ticket.state }}</p>
+<p><b>Dialog:</b> {{ ticket.dialog }}</p>
+
+<h3>Subir adjunto</h3>
+<form action="/web/tickets/{{ ticket.id }}/upload" method="post" enctype="multipart/form-data">
+  <input type="file" name="file"><br><br>
+  <button type="submit">Subir</button>
+</form>
+
+{% if message %}
+<p style="color:green">{{ message }}</p>
+{% endif %}
+{% endblock %}
