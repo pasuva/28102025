@@ -2,8 +2,14 @@ from fastapi import FastAPI
 from app.routes import webhook, tickets, auth, simulate_flow, logs, web
 from app.database import init_db
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 
 app = FastAPI(title="Ticketing Adamo - Ibiocom")
+
+@app.get("/")
+def root():
+    # Redirige automáticamente a la ruta de login
+    return RedirectResponse("/web/login")
 
 @app.on_event("startup")
 def on_startup():
