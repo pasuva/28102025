@@ -1,17 +1,106 @@
 {% extends "base.html" %}
 {% block title %}Ticket {{ ticket.primary_key }}{% endblock %}
+
 {% block content %}
-<h2>Ticket {{ ticket.primary_key }}</h2>
-<p><b>Estado:</b> {{ ticket.state }}</p>
-<p><b>Dialog:</b> {{ ticket.dialog }}</p>
+<div class="ticket-detail-container">
 
-<h3>Subir adjunto</h3>
-<form action="/web/tickets/{{ ticket.id }}/upload" method="post" enctype="multipart/form-data">
-  <input type="file" name="file"><br><br>
-  <button type="submit">Subir</button>
-</form>
+  <!-- COLUMNA IZQUIERDA -->
+  <div class="ticket-info">
+    <h2>Ticket {{ ticket.primary_key }}</h2>
+    <p><b>Tipo:</b>
+      {% if ticket.ticket_type == 'ftth_cliente' %}
+        <span class="ticket-type ticket-client">Cliente</span>
+      {% elif ticket.ticket_type == 'ftth_masivo' %}
+        <span class="ticket-type ticket-massive">Masivo</span>
+      {% elif ticket.ticket_type == 'trabajos_programados' %}
+        <span class="ticket-type ticket-workflow">Trabajo programado</span>
+      {% else %}
+        <span class="ticket-type">Desconocido</span>
+      {% endif %}
+    </p>
 
-{% if message %}
-<p style="color:green">{{ message }}</p>
-{% endif %}
+    <p><b>Estado:</b>
+      <span class="status-tag status-{{ ticket.state }}">{{ ticket.state|capitalize }}</span>
+    </p>
+
+    <p><b>Creado:</b> {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+    {% if ticket.updated_at %}
+      <p><b>Última actualización:</b> {{ ticket.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+    {% endif %}
+
+    <p><b>Descripción:</b></p>
+    <div class="ticket-dialog">{{ ticket.dialog or "Sin descripción" }}</div>
+
+    {% if message %}
+    <div class="success-msg">{{ message }}</div>
+    {% endif %}
+  </div>
+
+  <!-- COLUMNA DERECHA -->
+  <div class="ticket-actions">
+
+    <!-- SUBIR ARCHIVO -->
+    <div class="action-card">
+      <h3><i class="fas fa-upload"></i> Subir adjunto</h3>
+      <form action="/web/tickets/{{ ticket.id }}/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit" class="btn-primary">Subir</button>
+      </form>
+    </div>
+
+    {% if ticket.ticket_type in ['ftth_cliente', 'ftth_masivo', 'trabajos_programados'] %}
+    <!-- SOLICITAR INFORMACIÓN -->
+    <div class="action-card">
+      <h3><i class="fas fa-info-circle"></i> Solicitar información adicional</h3>
+      <form action="/web/tickets/{{ ticket.id }}/request_info" method="post" enctype="multipart/form-data">
+        <textarea name="dialog" placeholder="Texto de solicitud..." required></textarea>
+        <input type="file" name="attachments" multiple>
+        <button type="submit" class="btn-warning">Solicitar</button>
+      </form>
+    </div>
+
+    <!-- PROPONER RESOLUCIÓN -->
+    <div class="action-card">
+      <h3><i class="fas fa-check-circle"></i> Proponer resolución</h3>
+      <form action="/web/tickets/{{ ticket.id }}/propose_resolution" method="post" enctype="multipart/form-data">
+        <label>Fecha restauración:</label>
+        <input type="datetime-local" name="date_restore_service" required>
+
+        <label>Tipificación de resolución:</label>
+        <input type="text" name="raw_resolution" required>
+
+        <label>Dialog (opcional):</label>
+        <textarea name="dialog"></textarea>
+
+        <label>Certificación:</label>
+        <input type="text" name="certification">
+
+        <label>Departamento:</label>
+        <input type="text" name="department">
+
+        <label>Tipificación real:</label>
+        <input type="text" name="raw_real_tipification">
+
+        <input type="file" name="attachments" multiple>
+        <button type="submit" class="btn-success">Enviar resolución</button>
+      </form>
+    </div>
+
+    <!-- ENVIAR REPORTE -->
+    <div class="action-card">
+      <h3><i class="fas fa-paper-plane"></i> Enviar reporte</h3>
+      <form action="/web/tickets/{{ ticket.id }}/send_report" method="post" enctype="multipart/form-data">
+        <textarea name="dialog" placeholder="Texto del reporte..." required></textarea>
+        <input type="file" name="attachments" multiple>
+        <button type="submit" class="btn-info">Enviar reporte</button>
+      </form>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<a href="/web/tickets" class="btn back-btn"><i class="fas fa-arrow-left"></i> Volver al listado</a>
 {% endblock %}
+
+

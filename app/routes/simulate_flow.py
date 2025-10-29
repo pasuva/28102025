@@ -3,19 +3,44 @@ from app.services.ticket_flow import handle_incoming_ticket, propose_resolution
 
 router = APIRouter(prefix="/simulate", tags=["Simulation"])
 
-@router.post("/adamo-to-ibiocom")
-def simulate_adamo_to_ibiocom():
+@router.post("/adamo-to-ibiocom-multiple")
+def simulate_multiple_tickets():
     """
-    Simula que Adamo nos envía un ticket nuevo vía webhook.
+    Simula que Adamo nos envía varios tickets nuevos vía webhook.
     """
-    fake_ticket = {
-        "primaryKey": "IB-LOCAL-001",
-        "baseTroubleTicketState": "OPENACTIVE",
-        "dialog": "Incidencia simulada enviada por Adamo (modo local)"
-    }
+    fake_tickets = [
+        {
+            "primaryKey": "IB-LOCAL-001",
+            "baseTroubleTicketState": "OPENACTIVE",
+            "dialog": "Incidencia FTTH Cliente",
+            "ticket_type": "ftth_cliente"
+        },
+        {
+            "primaryKey": "IB-LOCAL-002",
+            "baseTroubleTicketState": "OPENACTIVE",
+            "dialog": "Incidencia FTTH Masivo",
+            "ticket_type": "ftth_masivo"
+        },
+        {
+            "primaryKey": "IB-LOCAL-003",
+            "baseTroubleTicketState": "OPENACTIVE",
+            "dialog": "Otra incidencia cliente",
+            "ticket_type": "ftth_cliente"
+        },
+        {
+            "primaryKey": "IB-WORKFLOW-004",
+            "baseTroubleTicketState": "OPENACTIVE",
+            "dialog": "Otra incidencia cliente",
+            "ticket_type": "trabajos_programados"
+        },
+    ]
 
-    ticket = handle_incoming_ticket(fake_ticket)
-    return {"status": "received", "ticket": ticket}
+    created_tickets = []
+    for ft in fake_tickets:
+        ticket = handle_incoming_ticket(ft, ticket_type=ft["ticket_type"])
+        created_tickets.append(ticket)
+
+    return {"status": "received", "tickets": created_tickets}
 
 
 @router.post("/ibiocom-to-adamo")

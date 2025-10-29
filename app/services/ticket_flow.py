@@ -4,7 +4,7 @@ from app.database import engine
 from sqlmodel import Session
 from datetime import datetime
 
-def handle_incoming_ticket(data: dict):
+def handle_incoming_ticket(data: dict, ticket_type: str = "ftth_cliente"):
     """
     Simula el proceso que ocurre cuando Adamo nos envía un ticket.
     Guarda o actualiza el ticket localmente.
@@ -28,11 +28,13 @@ def handle_incoming_ticket(data: dict):
                 mirror_key=mirror_key,
                 state=state,
                 dialog=dialog,
+                ticket_type=ticket_type  # <-- Aquí asignamos el tipo
             )
             session.add(ticket)
         session.commit()
         session.refresh(ticket)
     return ticket
+
 
 
 def propose_resolution(ticket: Ticket):

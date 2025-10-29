@@ -9,6 +9,7 @@ class Ticket(SQLModel, table=True):
     state: Optional[str] = Field(default=None, max_length=50)
     dialog: Optional[str] = None
     clearance_person: Optional[str] = Field(default="ibiocom", max_length=50)
+    ticket_type: str = Field(default="ftth_cliente", max_length=50)  # <-- nuevo campo
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
