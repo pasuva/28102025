@@ -45,7 +45,13 @@
         <ul>
         {% for r in ticket.local_requests|fromjson %}
           <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
-          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          {% if r.attachments %}
+          <br><small>Adjuntos:
+            {% for f in r.attachments %}
+              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </small>
+        {% endif %}
           </li>
         {% endfor %}
         </ul>
@@ -57,7 +63,13 @@
         {% for r in ticket.local_resolutions|fromjson %}
           <li><b>{{ r.timestamp }}</b> — {{ r.raw_resolution }}
           {% if r.dialog %}<br><small>Dialog: {{ r.dialog }}</small>{% endif %}
-          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          {% if r.attachments %}
+          <br><small>Adjuntos:
+            {% for f in r.attachments %}
+              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </small>
+        {% endif %}
           </li>
         {% endfor %}
         </ul>
@@ -68,7 +80,13 @@
         <ul>
         {% for r in ticket.local_reports|fromjson %}
           <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
-          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          {% if r.attachments %}
+          <br><small>Adjuntos:
+            {% for f in r.attachments %}
+              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </small>
+        {% endif %}
           </li>
         {% endfor %}
         </ul>

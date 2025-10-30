@@ -534,3 +534,11 @@ body { background: #f4f6f9; color: #333; line-height: 1.6; }
 .warning-msg::before { content: "⚠️ "; }
 .info-msg::before { content: "ℹ️ "; }
 
+.ticket-local a {
+    color: #3498db;
+    text-decoration: underline;
+}
+.ticket-local a:hover {
+    color: #1d6fa5;
+}
+

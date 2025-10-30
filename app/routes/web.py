@@ -9,6 +9,9 @@ import os
 from datetime import datetime
 from typing import List, Optional
 import json
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
+
 import base64
 
 # Flujos específicos
@@ -138,6 +141,12 @@ def ticket_detail(request: Request, ticket_id: int, msg: Optional[str] = None):
         "message_type": "info"
     })
 
+@router.get("/files/{ticket_id}/{filename}")
+def get_file(ticket_id: int, filename: str):
+    path = os.path.join("uploads", str(ticket_id), filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    return FileResponse(path)
 
 # ---------- SUBIDA DE ARCHIVO ----------
 
@@ -146,15 +155,20 @@ async def upload_file(request: Request, ticket_id: int, file: UploadFile = File(
     if not SESSION_USER:
         return RedirectResponse("/web/login")
 
-    contents = await file.read()
-    upload_dir = "uploads"
+    # Carpeta específica del ticket
+    upload_dir = os.path.join("uploads", str(ticket_id))
     os.makedirs(upload_dir, exist_ok=True)
     filepath = os.path.join(upload_dir, file.filename)
 
+    contents = await file.read()
     with open(filepath, "wb") as f:
         f.write(contents)
 
-    return RedirectResponse(f"/web/tickets/{ticket_id}?msg=Archivo '{file.filename}' subido correctamente", status_code=302)
+    return RedirectResponse(
+        f"/web/tickets/{ticket_id}?msg=Archivo '{file.filename}' subido correctamente",
+        status_code=302
+    )
+
 
 
 # ---------- UTILIDADES ----------
@@ -341,18 +355,30 @@ async def web_send_report(
 
 # ---------- HELPER: PREPARAR ADJUNTOS ----------
 
-async def prepare_attachments(attachments: Optional[List[UploadFile]]):
-    """Convierte los UploadFile a dict con filename + base64 content"""
+async def prepare_attachments(attachments: Optional[List[UploadFile]], ticket_id: int = None):
+    """Convierte los UploadFile a dict con filename + ruta accesible"""
     if not attachments:
         return []
+
     files_data = []
     for f in attachments:
         content = await f.read()
+
+        # Guardar archivo físicamente
+        if ticket_id:
+            upload_dir = os.path.join("uploads", str(ticket_id))
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, f.filename)
+            with open(filepath, "wb") as file_out:
+                file_out.write(content)
+
         files_data.append({
             "filename": f.filename,
-            "content": base64.b64encode(content).decode("utf-8")
+            "path": f"/web/files/{ticket_id}/{f.filename}"
         })
+
     return files_data
+
 
 
 
