@@ -11,7 +11,7 @@ from typing import List, Optional
 import json
 from fastapi.responses import FileResponse
 from fastapi import HTTPException
-
+import mimetypes
 import base64
 
 # Flujos específicos
@@ -235,7 +235,7 @@ async def web_request_info(
     if not SESSION_USER:
         return RedirectResponse("/web/login")
 
-    attachments_data = await prepare_attachments(attachments)
+    attachments_data = await prepare_attachments(attachments, ticket_id)
 
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
@@ -280,7 +280,7 @@ async def web_propose_resolution(
     if not SESSION_USER:
         return RedirectResponse("/web/login")
 
-    attachments_data = await prepare_attachments(attachments)
+    attachments_data = await prepare_attachments(attachments, ticket_id)
     date_obj = datetime.fromisoformat(date_restore_service)
 
     with Session(engine) as session:
@@ -323,7 +323,7 @@ async def web_send_report(
     if not SESSION_USER:
         return RedirectResponse("/web/login")
 
-    attachments_data = await prepare_attachments(attachments)
+    attachments_data = await prepare_attachments(attachments, ticket_id)
 
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
@@ -355,29 +355,42 @@ async def web_send_report(
 
 # ---------- HELPER: PREPARAR ADJUNTOS ----------
 
-async def prepare_attachments(attachments: Optional[List[UploadFile]], ticket_id: int = None):
-    """Convierte los UploadFile a dict con filename + ruta accesible"""
+
+
+async def prepare_attachments(attachments: Optional[List[UploadFile]], ticket_id: Optional[int] = None):
+    """Convierte los UploadFile a dict con filename + contenido base64 + tipo MIME"""
     if not attachments:
         return []
 
-    files_data = []
-    for f in attachments:
-        content = await f.read()
+    if ticket_id is None:
+        raise ValueError("ticket_id es requerido para guardar archivos")
 
-        # Guardar archivo físicamente
-        if ticket_id:
-            upload_dir = os.path.join("uploads", str(ticket_id))
-            os.makedirs(upload_dir, exist_ok=True)
-            filepath = os.path.join(upload_dir, f.filename)
-            with open(filepath, "wb") as file_out:
-                file_out.write(content)
+    files_data = []
+    upload_dir = os.path.join("uploads", str(ticket_id))
+    os.makedirs(upload_dir, exist_ok=True)
+
+    for f in attachments:
+        if not f.filename:
+            continue
+        content = await f.read()
+        filepath = os.path.join(upload_dir, f.filename)
+        with open(filepath, "wb") as file_out:
+            file_out.write(content)
+
+        mime_type, _ = mimetypes.guess_type(f.filename)
+        if mime_type is None:
+            mime_type = "application/octet-stream"
 
         files_data.append({
             "filename": f.filename,
-            "path": f"/web/files/{ticket_id}/{f.filename}"
+            "path": f"/web/files/{ticket_id}/{f.filename}",
+            "content": base64.b64encode(content).decode("utf-8"),
+            "content_type": mime_type
         })
 
     return files_data
+
+
 
 
 

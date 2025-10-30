@@ -18,19 +18,24 @@
 
   <div class="container">
     <aside class="sidebar">
-      <div class="user-panel">
-        <img src="/static/user.png" alt="Usuario" class="user-img">
-        <p class="username">{{ current_user.email if current_user else "Invitado" }}</p>
-      </div>
-      <div class="notifications">
-        <p>Tickets nuevos: <span class="badge">{{ new_tickets_count }}</span></p>
-      </div>
-      <nav>
-        <a href="/web/dashboard">Dashboard</a>
-        <a href="/web/tickets">Tickets</a>
-        <a href="/web/logout">Cerrar sesión</a>
-      </nav>
-    </aside>
+  <div class="user-panel">
+    <img src="/static/user.png" alt="Usuario" class="user-img">
+    <div class="user-info">
+      <p class="username">{{ current_user.email if current_user else "Invitado" }}</p>
+      <p class="user-role">Rol: {{ current_user.role if current_user else "Sin rol" }}</p>
+    </div>
+  </div>
+
+  <div class="notifications">
+    <p>Tickets nuevos: <span class="badge">{{ new_tickets_count or 0 }}</span></p>
+  </div>
+
+  <nav>
+    <a href="/web/dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
+    <a href="/web/tickets"><i class="fas fa-ticket-alt"></i> Tickets</a>
+    <a href="/web/logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+  </nav>
+</aside>
 
     <main class="main-content">
       <h2>{% block header %}{% endblock %}</h2>

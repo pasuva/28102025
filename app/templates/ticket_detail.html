@@ -6,14 +6,16 @@
 
   <!-- MENSAJE GLOBAL -->
   {% if message %}
-    <div class="flash-message
-      {% if message_type == 'success' %}success-msg
-      {% elif message_type == 'error' %}error-msg
-      {% elif message_type == 'warning' %}warning-msg
-      {% elif message_type == 'info' %}info-msg{% endif %}">
+  <div class="flash-message
+    {% if message_type == 'success' %}success-msg
+    {% elif message_type == 'error' %}error-msg
+    {% elif message_type == 'warning' %}warning-msg
+    {% elif message_type == 'info' %}info-msg{% endif %}">
+
     {{ message }}
+    <span class="close-msg" onclick="this.parentElement.style.display='none';">&times;</span>
   </div>
-  {% endif %}
+{% endif %}
 
   <!-- COLUMNA IZQUIERDA -->
   <div class="ticket-info">
@@ -34,93 +36,127 @@
     <p><b>Descripción (Adamo):</b></p>
     <div class="ticket-dialog">{{ ticket.dialog or "Sin descripción" }}</div>
 
-    <div class="ticket-local">
-      <h3>Datos enviados por Ibiocom</h3>
-      {% if not ticket.local_requests and not ticket.local_resolutions and not ticket.local_reports %}
-        <p><em>No hay acciones registradas aún.</em></p>
-      {% endif %}
+    <div class="ticket-local scrollable">
+  <h3>Datos enviados por Ibiocom</h3>
+  {% if not ticket.local_requests and not ticket.local_resolutions and not ticket.local_reports %}
+    <p><em>No hay acciones registradas aún.</em></p>
+  {% endif %}
 
-      {% if ticket.local_requests %}
-        <h4>📩 Solicitudes de información:</h4>
-        <ul>
-        {% for r in ticket.local_requests|fromjson %}
-          <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
-          {% if r.attachments %}
-          <br><small>Adjuntos:
-            {% for f in r.attachments %}
-              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          </small>
+  {% if ticket.local_requests %}
+  <details open>
+    <summary>📩 Solicitudes de información</summary>
+    <div class="activity-list">
+      {% for r in ticket.local_requests|fromjson %}
+      <div class="activity-item info">
+        <div class="activity-header">
+          <span class="activity-time">{{ r.timestamp }}</span>
+          <span class="activity-type">Solicitud</span>
+        </div>
+        <div class="activity-body">{{ r.dialog }}</div>
+        {% if r.attachments %}
+        <div class="activity-attachments">
+          <strong>Adjuntos:</strong>
+          {% for f in r.attachments %}
+            <a href="{{ f.path }}" target="_blank" class="file-link">
+              <i class="fas fa-paperclip"></i> {{ f.filename }}
+            </a>
+          {% endfor %}
+        </div>
         {% endif %}
-          </li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-
-      {% if ticket.local_resolutions %}
-        <h4>✅ Resoluciones propuestas:</h4>
-        <ul>
-        {% for r in ticket.local_resolutions|fromjson %}
-          <li><b>{{ r.timestamp }}</b> — {{ r.raw_resolution }}
-          {% if r.dialog %}<br><small>Dialog: {{ r.dialog }}</small>{% endif %}
-          {% if r.attachments %}
-          <br><small>Adjuntos:
-            {% for f in r.attachments %}
-              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          </small>
-        {% endif %}
-          </li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-
-      {% if ticket.local_reports %}
-        <h4>🧾 Reportes enviados:</h4>
-        <ul>
-        {% for r in ticket.local_reports|fromjson %}
-          <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
-          {% if r.attachments %}
-          <br><small>Adjuntos:
-            {% for f in r.attachments %}
-              <a href="{{ f.path }}" target="_blank">{{ f.filename }}</a>{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          </small>
-        {% endif %}
-          </li>
-        {% endfor %}
-        </ul>
-      {% endif %}
+      </div>
+      {% endfor %}
     </div>
-  </div>
+  </details>
+  {% endif %}
 
+  {% if ticket.local_resolutions %}
+  <details>
+    <summary>✅ Resoluciones propuestas</summary>
+    <div class="activity-list">
+      {% for r in ticket.local_resolutions|fromjson %}
+      <div class="activity-item success">
+        <div class="activity-header">
+          <span class="activity-time">{{ r.timestamp }}</span>
+          <span class="activity-type">Resolución</span>
+        </div>
+        <div class="activity-body">
+          <strong>{{ r.raw_resolution }}</strong>
+          {% if r.dialog %}<br>{{ r.dialog }}{% endif %}
+        </div>
+        {% if r.attachments %}
+        <div class="activity-attachments">
+          <strong>Adjuntos:</strong>
+          {% for f in r.attachments %}
+            <a href="{{ f.path }}" target="_blank" class="file-link">
+              <i class="fas fa-paperclip"></i> {{ f.filename }}
+            </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+
+  {% if ticket.local_reports %}
+  <details>
+    <summary>🧾 Reportes enviados</summary>
+    <div class="activity-list">
+      {% for r in ticket.local_reports|fromjson %}
+      <div class="activity-item report">
+        <div class="activity-header">
+          <span class="activity-time">{{ r.timestamp }}</span>
+          <span class="activity-type">Reporte</span>
+        </div>
+        <div class="activity-body">{{ r.dialog }}</div>
+        {% if r.attachments %}
+        <div class="activity-attachments">
+          <strong>Adjuntos:</strong>
+          {% for f in r.attachments %}
+            <a href="{{ f.path }}" target="_blank" class="file-link">
+              <i class="fas fa-paperclip"></i> {{ f.filename }}
+            </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</div>
+
+</div>
   <!-- COLUMNA DERECHA -->
-  <div class="ticket-actions">
+<div class="ticket-actions">
 
-    <!-- SUBIR ARCHIVO -->
+  <details open>
+    <summary><i class="fas fa-upload"></i> Subir adjunto</summary>
     <div class="action-card">
-      <h3><i class="fas fa-upload"></i> Subir adjunto</h3>
       <form action="/web/tickets/{{ ticket.id }}/upload" method="post" enctype="multipart/form-data">
         <input type="file" name="file" required>
         <button type="submit" class="btn-primary">Subir</button>
       </form>
     </div>
+  </details>
 
-    {% if ticket.ticket_type in ['ftth_cliente','ftth_masivo','trabajos_programados'] %}
+  {% if ticket.ticket_type in ['ftth_cliente','ftth_masivo','trabajos_programados'] %}
 
-    <!-- SOLICITAR INFORMACIÓN -->
+  <details>
+    <summary><i class="fas fa-info-circle"></i> Solicitar información adicional</summary>
     <div class="action-card">
-      <h3><i class="fas fa-info-circle"></i> Solicitar información adicional</h3>
       <form action="/web/tickets/{{ ticket.id }}/request_info" method="post" enctype="multipart/form-data">
         <textarea name="dialog" placeholder="Texto de solicitud..." required></textarea>
         <input type="file" name="attachments" multiple>
         <button type="submit" class="btn-warning">Solicitar</button>
       </form>
     </div>
+  </details>
 
-    <!-- PROPONER RESOLUCIÓN -->
+  <details>
+    <summary><i class="fas fa-check-circle"></i> Proponer resolución</summary>
     <div class="action-card">
-      <h3><i class="fas fa-check-circle"></i> Proponer resolución</h3>
       <form action="/web/tickets/{{ ticket.id }}/propose_resolution" method="post" enctype="multipart/form-data">
         <label>Fecha restauración:</label>
         <input type="datetime-local" name="date_restore_service" required>
@@ -138,19 +174,22 @@
         <button type="submit" class="btn-success">Enviar resolución</button>
       </form>
     </div>
+  </details>
 
-    <!-- ENVIAR REPORTE -->
+  <details>
+    <summary><i class="fas fa-paper-plane"></i> Enviar reporte</summary>
     <div class="action-card">
-      <h3><i class="fas fa-paper-plane"></i> Enviar reporte</h3>
       <form action="/web/tickets/{{ ticket.id }}/send_report" method="post" enctype="multipart/form-data">
         <textarea name="dialog" placeholder="Texto del reporte..." required></textarea>
         <input type="file" name="attachments" multiple>
         <button type="submit" class="btn-info">Enviar reporte</button>
       </form>
     </div>
-    {% endif %}
+  </details>
 
-  </div>
+  {% endif %}
+
+</div>
 </div>
 
 <a href="/web/tickets" class="btn back-btn"><i class="fas fa-arrow-left"></i> Volver al listado</a>

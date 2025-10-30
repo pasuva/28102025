@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-{% block header %}Panel de Control{% endblock %}
 
 {% block content %}
 <div class="dashboard-cards">
@@ -10,7 +9,6 @@
   <div class="dashboard-card cerrado"><h3>Cerrados</h3><p>{{ stats.cerrado }}</p></div>
 </div>
 
-<h2>Estado de Tickets</h2>
 <canvas id="ticketsChart" style="max-width:600px; margin:20px auto; display:block;"></canvas>
 
 <h2>Últimos Tickets</h2>
