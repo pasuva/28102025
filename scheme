@@ -1,37 +1,46 @@
-app/
-├── __init__.py
-├── main.py
-├── database.py
-├── models.py
-├── auth/
-│   ├── __init__.py
-│   └── jwt_handler.py
-└── routes/
+Ticketing_Adamo/
+├── .env
+├── dev.db
+├── requirements.txt
+├── scheme
+├── uploads/
+└── app/
     ├── __init__.py
-    ├── webhook.py
-    ├── tickets.py
-    └── auth.py
--- .env
--- requirements.txt
--- README.md
-
-para simular el flujo del ticket
-app/
-├── services/
-│   ├── __init__.py
-│   └── ticket_flow.py   👈 lógica simulada
-└── routes/
-    ├── simulate_flow.py 👈 endpoint de simulación
-
-
-Para la interfaz grafica
-app/
-├── templates/
-│   ├── base.html
-│   ├── login.html
-│   ├── tickets.html
-│   └── ticket_detail.html
-├── static/
-│   └── style.css
-└── routes/
-    └── web.py
+    ├── database.py
+    ├── main.py
+    ├── models.py
+    ├── test_soap.py
+    ├── auth/
+    │   ├── __init__.py
+    │   ├── dependencies.py
+    │   └── jwt_handler.py
+    ├── routes/
+    │   ├── __init__.py
+    │   ├── auth.py
+    │   ├── ftth.py
+    │   ├── ftth_massive.py
+    │   ├── logs.py
+    │   ├── simulate_flow.py
+    │   ├── tickets.py
+    │   ├── web.py
+    │   ├── webhook.py
+    │   └── workflows_routes.py
+    ├── services/
+    │   ├── __init__.py
+    │   ├── ftth_flow.py
+    │   ├── ftth_masive_flow.py
+    │   ├── logger.py
+    │   ├── ticket_flow.py
+    │   └── workflows_flow.py
+    ├── soap/
+    │   ├── __init__.py
+    │   └── client.py
+    ├── static/
+    │   ├── style.css
+    │   └── user.png
+    └── templates/
+        ├── base.html
+        ├── dashboard.html
+        ├── login.html
+        ├── ticket_detail.html
+        └── tickets.html

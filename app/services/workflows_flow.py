@@ -1,24 +1,26 @@
 # app/services/workflows_flow.py
 from datetime import datetime
-from sqlmodel import Session
-from app.database import engine
 from app.models import Ticket
 from app.soap.client import set_trouble_ticket_by_value
 
-def request_additional_info(ticket: Ticket, dialog: str, attachments=None):
+def request_additional_info(ticket: Ticket, dialog: str, attachments: list[dict] = None):
     payload = {
         "baseTroubleTicketState": "OPENACTIVE",
         "primaryKey": ticket.primary_key,
         "mirrorKey": ticket.mirror_key,
         "dialog": dialog,
         "clearancePerson": "ibiocom",
-        "attachments": attachments or None
+        "attachments": attachments or []
     }
     result = set_trouble_ticket_by_value(payload, env="PRE")
-    return f"Solicitud de información enviada correctamente: {result}"
+    # ✅ Mensaje amigable para frontend
+    if "error" in result:
+        return {"message": "Error al enviar la solicitud", "message_type": "error"}
+    else:
+        return {"message": "Solicitud enviada correctamente", "message_type": "success"}
 
 def propose_resolution(ticket: Ticket, date_restore_service: datetime, raw_resolution: str,
-                       dialog: str = None, attachments=None, certification=None,
+                       dialog: str = None, attachments: list[dict] = None, certification=None,
                        department=None, raw_real_tipification=None):
     payload = {
         "baseTroubleTicketState": "OPENACTIVE",
@@ -27,22 +29,31 @@ def propose_resolution(ticket: Ticket, date_restore_service: datetime, raw_resol
         "certification": certification,
         "department": department,
         "rawRealTipification": raw_real_tipification,
-        "dateRestoreService": date_restore_service.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "dateRestoreService": date_restore_service.isoformat(),
         "rawResolution": raw_resolution,
-        "dialog": dialog,
+        "dialog": dialog or "",
         "clearancePerson": "ibiocom",
-        "attachments": attachments or None
+        "attachments": attachments or []
     }
     result = set_trouble_ticket_by_value(payload, env="PRE")
-    return f"Propuesta de resolución enviada correctamente: {result}"
+    # ✅ Mensaje amigable para frontend
+    if "error" in result:
+        return {"message": "Error al enviar la solicitud", "message_type": "error"}
+    else:
+        return {"message": "Solicitud enviada correctamente", "message_type": "success"}
 
-def send_report(ticket: Ticket, dialog: str, attachments=None):
+def send_report(ticket: Ticket, dialog: str, attachments: list[dict] = None):
     payload = {
         "primaryKey": ticket.primary_key,
         "mirrorKey": ticket.mirror_key,
         "dialog": dialog,
         "clearancePerson": "ibiocom",
-        "attachments": attachments or None
+        "attachments": attachments or []
     }
     result = set_trouble_ticket_by_value(payload, env="PRE")
-    return f"Reporte enviado correctamente: {result}"
+    # ✅ Mensaje amigable para frontend
+    if "error" in result:
+        return {"message": "Error al enviar la solicitud", "message_type": "error"}
+    else:
+        return {"message": "Solicitud enviada correctamente", "message_type": "success"}
+

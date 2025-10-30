@@ -8,27 +8,43 @@ from passlib.context import CryptContext
 import os
 from datetime import datetime
 from typing import List, Optional
+import json
+import base64
 
-# Importamos ambos flujos
-from app.services.ftth_flow import request_additional_info as ftth_request_info, \
-    propose_resolution as ftth_propose_resolution, \
+# Flujos específicos
+from app.services.ftth_flow import (
+    request_additional_info as ftth_request_info,
+    propose_resolution as ftth_propose_resolution,
     send_report as ftth_send_report
+)
 
-from app.services.ftth_masive_flow import request_additional_info as massive_request_info, \
-    propose_resolution as massive_propose_resolution, \
+from app.services.ftth_masive_flow import (
+    request_additional_info as massive_request_info,
+    propose_resolution as massive_propose_resolution,
     send_report as massive_send_report
+)
 
-# 🔹 Nuevo flujo: Trabajos programados
-from app.services.workflows_flow import request_additional_info as wf_request_info, \
-    propose_resolution as wf_propose_resolution, \
+from app.services.workflows_flow import (
+    request_additional_info as wf_request_info,
+    propose_resolution as wf_propose_resolution,
     send_report as wf_send_report
+)
 
 router = APIRouter(prefix="/web", tags=["Web"])
 templates = Jinja2Templates(directory="app/templates")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Sesión simple (no JWT)
-SESSION_USER = None
+# Filtro personalizado Jinja para convertir strings JSON
+def fromjson(value):
+    if not value:
+        return []
+    try:
+        return json.loads(value)
+    except Exception:
+        return []
+
+templates.env.filters["fromjson"] = fromjson
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SESSION_USER = None  # Sesión simple
 
 # ---------- LOGIN / LOGOUT ----------
 
@@ -59,16 +75,20 @@ def logout():
 def dashboard(request: Request):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
     with Session(engine) as session:
         tickets = session.exec(select(Ticket).order_by(Ticket.created_at.desc())).all()
-        stats = {
-            "total": len(tickets),
-            "abierto": sum(1 for t in tickets if t.state == "abierto"),
-            "proceso": sum(1 for t in tickets if t.state == "proceso"),
-            "cerrado": sum(1 for t in tickets if t.state == "cerrado"),
-        }
-        new_tickets_count = sum(1 for t in tickets if t.state == "abierto")
-        latest_tickets = tickets[:5]
+
+    stats = {
+        "total": len(tickets),
+        "abierto": sum(1 for t in tickets if t.state == "abierto"),
+        "proceso": sum(1 for t in tickets if t.state == "proceso"),
+        "cerrado": sum(1 for t in tickets if t.state == "cerrado"),
+    }
+
+    new_tickets_count = sum(1 for t in tickets if t.state == "abierto")
+    latest_tickets = tickets[:5]
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "current_user": SESSION_USER,
@@ -77,21 +97,47 @@ def dashboard(request: Request):
         "new_tickets_count": new_tickets_count
     })
 
+
 @router.get("/tickets", response_class=HTMLResponse)
 def list_tickets(request: Request):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
     with Session(engine) as session:
         tickets = session.exec(select(Ticket).order_by(Ticket.created_at.desc())).all()
-    return templates.TemplateResponse("tickets.html", {"request": request, "tickets": tickets, "current_user": SESSION_USER})
+        tickets_data = [ticket_to_dict(t) for t in tickets]
+
+    return templates.TemplateResponse("tickets.html", {
+        "request": request,
+        "tickets": tickets_data,
+        "current_user": SESSION_USER
+    })
+
+
+# ---------- DETALLE DEL TICKET ----------
 
 @router.get("/tickets/{ticket_id}", response_class=HTMLResponse)
-def ticket_detail(request: Request, ticket_id: int):
+def ticket_detail(request: Request, ticket_id: int, msg: Optional[str] = None):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
-    return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": ticket, "current_user": SESSION_USER})
+        if not ticket:
+            return templates.TemplateResponse(
+                "ticket_detail.html",
+                {"request": request, "ticket": None, "message": "Ticket no encontrado", "message_type": "error"}
+            )
+        ticket_data = ticket_to_dict(ticket)
+
+    return templates.TemplateResponse("ticket_detail.html", {
+        "request": request,
+        "ticket": ticket_data,
+        "current_user": SESSION_USER,
+        "message": msg,
+        "message_type": "info"
+    })
+
 
 # ---------- SUBIDA DE ARCHIVO ----------
 
@@ -99,83 +145,214 @@ def ticket_detail(request: Request, ticket_id: int):
 async def upload_file(request: Request, ticket_id: int, file: UploadFile = File(...)):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
     contents = await file.read()
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
     filepath = os.path.join(upload_dir, file.filename)
+
     with open(filepath, "wb") as f:
         f.write(contents)
-    with Session(engine) as session:
-        ticket = session.get(Ticket, ticket_id)
-    message = f"Archivo '{file.filename}' subido correctamente."
-    return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": ticket, "current_user": SESSION_USER, "message": message})
 
-# ---------- UTILIDADES PARA FLUJO DINÁMICO ----------
+    return RedirectResponse(f"/web/tickets/{ticket_id}?msg=Archivo '{file.filename}' subido correctamente", status_code=302)
+
+
+# ---------- UTILIDADES ----------
 
 def get_ticket_flow(ticket: Ticket):
-    """Devuelve las funciones del flujo según el tipo de ticket."""
     tipo = getattr(ticket, "ticket_type", None)
-
     if tipo == "ftth_masivo":
         return massive_request_info, massive_propose_resolution, massive_send_report
     elif tipo == "trabajos_programados":
         return wf_request_info, wf_propose_resolution, wf_send_report
-    # Por defecto: ftth_cliente
     return ftth_request_info, ftth_propose_resolution, ftth_send_report
+
+def append_local_record(ticket: Ticket, field: str, record: dict):
+    existing_data = []
+    if getattr(ticket, field):
+        try:
+            existing_data = json.loads(getattr(ticket, field))
+        except Exception:
+            existing_data = []
+    existing_data.append(record)
+    setattr(ticket, field, json.dumps(existing_data))
+
+def ticket_to_dict(ticket: Ticket):
+    """Convierte Ticket SQLModel a diccionario seguro para Jinja2"""
+    return {
+        "id": ticket.id,
+        "primary_key": ticket.primary_key,
+        "ticket_type": ticket.ticket_type,
+        "state": ticket.state,
+        "created_at": ticket.created_at,
+        "updated_at": ticket.updated_at,
+        "dialog": ticket.dialog,
+        "local_requests": ticket.local_requests,
+        "local_resolutions": ticket.local_resolutions,
+        "local_reports": ticket.local_reports
+    }
+
+def extract_message(result):
+    """Extrae message y tipo para alertas"""
+    if isinstance(result, dict):
+        msg = result.get("message", "Operación realizada")
+        status = result.get("status", "info")
+    else:
+        msg = str(result)
+        status = "info"
+    if status.lower() in ["openactive", "mock"]:
+        status = "success"
+    elif status.lower() in ["error", "fail"]:
+        status = "error"
+    else:
+        status = status.lower()
+    return msg, status
+
 
 # ---------- ENDPOINTS DE ACCIÓN ----------
 
 @router.post("/tickets/{ticket_id}/request_info", response_class=HTMLResponse)
-async def web_request_info(request: Request, ticket_id: int, dialog: str = Form(...), attachments: Optional[List[UploadFile]] = File(None)):
+async def web_request_info(
+    request: Request,
+    ticket_id: int,
+    dialog: str = Form(...),
+    attachments: Optional[List[UploadFile]] = File(None)
+):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
+    attachments_data = await prepare_attachments(attachments)
+
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
-            return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": None, "message": "Ticket no encontrado"})
+            return templates.TemplateResponse(
+                "ticket_detail.html",
+                {"request": request, "ticket": None, "message": "Ticket no encontrado", "message_type": "error"}
+            )
 
-    request_func, _, _ = get_ticket_flow(ticket)
-    result = request_func(ticket, dialog, attachments)
-    return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": ticket, "current_user": SESSION_USER, "message": str(result)})
+        request_func, _, _ = get_ticket_flow(ticket)
+        result = request_func(ticket, dialog, attachments_data)
+
+        record = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "dialog": dialog,
+            "attachments": attachments_data
+        }
+        append_local_record(ticket, "local_requests", record)
+        session.add(ticket)
+        session.commit()
+        ticket_data = ticket_to_dict(ticket)
+
+    msg, msg_type = extract_message(result)
+    return templates.TemplateResponse(
+        "ticket_detail.html",
+        {"request": request, "ticket": ticket_data, "current_user": SESSION_USER, "message": msg, "message_type": msg_type}
+    )
 
 
 @router.post("/tickets/{ticket_id}/propose_resolution", response_class=HTMLResponse)
 async def web_propose_resolution(
-        request: Request,
-        ticket_id: int,
-        date_restore_service: str = Form(...),
-        raw_resolution: str = Form(...),
-        dialog: Optional[str] = Form(None),
-        certification: Optional[str] = Form(None),
-        department: Optional[str] = Form(None),
-        raw_real_tipification: Optional[str] = Form(None),
-        attachments: Optional[List[UploadFile]] = File(None)
+    request: Request,
+    ticket_id: int,
+    date_restore_service: str = Form(...),
+    raw_resolution: str = Form(...),
+    dialog: Optional[str] = Form(None),
+    certification: Optional[str] = Form(None),
+    department: Optional[str] = Form(None),
+    raw_real_tipification: Optional[str] = Form(None),
+    attachments: Optional[List[UploadFile]] = File(None)
 ):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
+    attachments_data = await prepare_attachments(attachments)
+    date_obj = datetime.fromisoformat(date_restore_service)
+
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
-            return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": None, "message": "Ticket no encontrado"})
+            return templates.TemplateResponse(
+                "ticket_detail.html",
+                {"request": request, "ticket": None, "message": "Ticket no encontrado", "message_type": "error"}
+            )
 
-    _, propose_func, _ = get_ticket_flow(ticket)
-    date_obj = datetime.fromisoformat(date_restore_service)
-    result = propose_func(ticket, date_obj, raw_resolution, dialog, attachments, certification, department, raw_real_tipification)
-    return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": ticket, "current_user": SESSION_USER, "message": str(result)})
+        _, propose_func, _ = get_ticket_flow(ticket)
+        result = propose_func(ticket, date_obj, raw_resolution, dialog, attachments_data,
+                              certification, department, raw_real_tipification)
+
+        record = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "raw_resolution": raw_resolution,
+            "dialog": dialog,
+            "attachments": attachments_data
+        }
+        append_local_record(ticket, "local_resolutions", record)
+        session.add(ticket)
+        session.commit()
+        ticket_data = ticket_to_dict(ticket)
+
+    msg, msg_type = extract_message(result)
+    return templates.TemplateResponse(
+        "ticket_detail.html",
+        {"request": request, "ticket": ticket_data, "current_user": SESSION_USER, "message": msg, "message_type": msg_type}
+    )
 
 
 @router.post("/tickets/{ticket_id}/send_report", response_class=HTMLResponse)
-async def web_send_report(request: Request, ticket_id: int, dialog: str = Form(...), attachments: Optional[List[UploadFile]] = File(None)):
+async def web_send_report(
+    request: Request,
+    ticket_id: int,
+    dialog: str = Form(...),
+    attachments: Optional[List[UploadFile]] = File(None)
+):
     if not SESSION_USER:
         return RedirectResponse("/web/login")
+
+    attachments_data = await prepare_attachments(attachments)
+
     with Session(engine) as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
-            return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": None, "message": "Ticket no encontrado"})
+            return templates.TemplateResponse(
+                "ticket_detail.html",
+                {"request": request, "ticket": None, "message": "Ticket no encontrado", "message_type": "error"}
+            )
 
-    _, _, send_func = get_ticket_flow(ticket)
-    result = send_func(ticket, dialog, attachments)
-    return templates.TemplateResponse("ticket_detail.html", {"request": request, "ticket": ticket, "current_user": SESSION_USER, "message": str(result)})
+        _, _, send_func = get_ticket_flow(ticket)
+        result = send_func(ticket, dialog, attachments_data)
+
+        record = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "dialog": dialog,
+            "attachments": attachments_data
+        }
+        append_local_record(ticket, "local_reports", record)
+        session.add(ticket)
+        session.commit()
+        ticket_data = ticket_to_dict(ticket)
+
+    msg, msg_type = extract_message(result)
+    return templates.TemplateResponse(
+        "ticket_detail.html",
+        {"request": request, "ticket": ticket_data, "current_user": SESSION_USER, "message": msg, "message_type": msg_type}
+    )
+
+
+# ---------- HELPER: PREPARAR ADJUNTOS ----------
+
+async def prepare_attachments(attachments: Optional[List[UploadFile]]):
+    """Convierte los UploadFile a dict con filename + base64 content"""
+    if not attachments:
+        return []
+    files_data = []
+    for f in attachments:
+        content = await f.read()
+        files_data.append({
+            "filename": f.filename,
+            "content": base64.b64encode(content).decode("utf-8")
+        })
+    return files_data
 
 
 

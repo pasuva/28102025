@@ -4,36 +4,76 @@
 {% block content %}
 <div class="ticket-detail-container">
 
+  <!-- MENSAJE GLOBAL -->
+  {% if message %}
+    <div class="flash-message
+      {% if message_type == 'success' %}success-msg
+      {% elif message_type == 'error' %}error-msg
+      {% elif message_type == 'warning' %}warning-msg
+      {% elif message_type == 'info' %}info-msg{% endif %}">
+    {{ message }}
+  </div>
+  {% endif %}
+
   <!-- COLUMNA IZQUIERDA -->
   <div class="ticket-info">
     <h2>Ticket {{ ticket.primary_key }}</h2>
     <p><b>Tipo:</b>
-      {% if ticket.ticket_type == 'ftth_cliente' %}
-        <span class="ticket-type ticket-client">Cliente</span>
-      {% elif ticket.ticket_type == 'ftth_masivo' %}
-        <span class="ticket-type ticket-massive">Masivo</span>
-      {% elif ticket.ticket_type == 'trabajos_programados' %}
-        <span class="ticket-type ticket-workflow">Trabajo programado</span>
-      {% else %}
-        <span class="ticket-type">Desconocido</span>
-      {% endif %}
+      {% if ticket.ticket_type == 'ftth_cliente' %}<span class="ticket-type ticket-client">Cliente</span>
+      {% elif ticket.ticket_type == 'ftth_masivo' %}<span class="ticket-type ticket-massive">Masivo</span>
+      {% elif ticket.ticket_type == 'trabajos_programados' %}<span class="ticket-type ticket-workflow">Trabajo programado</span>
+      {% else %}<span class="ticket-type">Desconocido</span>{% endif %}
     </p>
 
-    <p><b>Estado:</b>
-      <span class="status-tag status-{{ ticket.state }}">{{ ticket.state|capitalize }}</span>
-    </p>
-
+    <p><b>Estado:</b> <span class="status-tag status-{{ ticket.state }}">{{ ticket.state|capitalize }}</span></p>
     <p><b>Creado:</b> {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
     {% if ticket.updated_at %}
       <p><b>Última actualización:</b> {{ ticket.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
     {% endif %}
 
-    <p><b>Descripción:</b></p>
+    <p><b>Descripción (Adamo):</b></p>
     <div class="ticket-dialog">{{ ticket.dialog or "Sin descripción" }}</div>
 
-    {% if message %}
-    <div class="success-msg">{{ message }}</div>
-    {% endif %}
+    <div class="ticket-local">
+      <h3>Datos enviados por Ibiocom</h3>
+      {% if not ticket.local_requests and not ticket.local_resolutions and not ticket.local_reports %}
+        <p><em>No hay acciones registradas aún.</em></p>
+      {% endif %}
+
+      {% if ticket.local_requests %}
+        <h4>📩 Solicitudes de información:</h4>
+        <ul>
+        {% for r in ticket.local_requests|fromjson %}
+          <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
+          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if ticket.local_resolutions %}
+        <h4>✅ Resoluciones propuestas:</h4>
+        <ul>
+        {% for r in ticket.local_resolutions|fromjson %}
+          <li><b>{{ r.timestamp }}</b> — {{ r.raw_resolution }}
+          {% if r.dialog %}<br><small>Dialog: {{ r.dialog }}</small>{% endif %}
+          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if ticket.local_reports %}
+        <h4>🧾 Reportes enviados:</h4>
+        <ul>
+        {% for r in ticket.local_reports|fromjson %}
+          <li><b>{{ r.timestamp }}</b><br>{{ r.dialog }}
+          {% if r.attachments %}<br><small>Adjuntos: {{ r.attachments|map(attribute='filename')|join(', ') }}</small>{% endif %}
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
   </div>
 
   <!-- COLUMNA DERECHA -->
@@ -48,7 +88,8 @@
       </form>
     </div>
 
-    {% if ticket.ticket_type in ['ftth_cliente', 'ftth_masivo', 'trabajos_programados'] %}
+    {% if ticket.ticket_type in ['ftth_cliente','ftth_masivo','trabajos_programados'] %}
+
     <!-- SOLICITAR INFORMACIÓN -->
     <div class="action-card">
       <h3><i class="fas fa-info-circle"></i> Solicitar información adicional</h3>
@@ -65,22 +106,16 @@
       <form action="/web/tickets/{{ ticket.id }}/propose_resolution" method="post" enctype="multipart/form-data">
         <label>Fecha restauración:</label>
         <input type="datetime-local" name="date_restore_service" required>
-
         <label>Tipificación de resolución:</label>
         <input type="text" name="raw_resolution" required>
-
         <label>Dialog (opcional):</label>
         <textarea name="dialog"></textarea>
-
         <label>Certificación:</label>
         <input type="text" name="certification">
-
         <label>Departamento:</label>
         <input type="text" name="department">
-
         <label>Tipificación real:</label>
         <input type="text" name="raw_real_tipification">
-
         <input type="file" name="attachments" multiple>
         <button type="submit" class="btn-success">Enviar resolución</button>
       </form>
@@ -102,5 +137,9 @@
 
 <a href="/web/tickets" class="btn back-btn"><i class="fas fa-arrow-left"></i> Volver al listado</a>
 {% endblock %}
+
+
+
+
 
 
