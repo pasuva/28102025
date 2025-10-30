@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi import HTTPException
 import mimetypes
 import base64
+from sqlmodel import func
 
 # Flujos específicos
 from app.services.ftth_flow import (
@@ -33,8 +34,39 @@ from app.services.workflows_flow import (
     send_report as wf_send_report
 )
 
+from app.models import Log  # asegúrate de importar tu modelo Log
+
 router = APIRouter(prefix="/web", tags=["Web"])
 templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/logs", response_class=HTMLResponse)
+def web_list_logs(request: Request, limit: int = 3, offset: int = 0):
+    if not SESSION_USER:
+        return RedirectResponse("/web/login")
+
+    with Session(engine) as session:
+        total_logs = session.exec(select(func.count(Log.id))).one()  # total de registros
+        logs = session.exec(
+            select(Log).order_by(Log.created_at.desc()).offset(offset).limit(limit)
+        ).all()
+
+    current_page = offset // limit + 1
+    total_pages = (total_logs + limit - 1) // limit  # ceil division
+
+    return templates.TemplateResponse(
+        "logs.html",
+        {
+            "request": request,
+            "logs": logs,
+            "limit": limit,
+            "offset": offset,
+            "current_user": SESSION_USER,
+            "current_page": current_page,
+            "total_pages": total_pages
+        }
+    )
+
 
 # Filtro personalizado Jinja para convertir strings JSON
 def fromjson(value):

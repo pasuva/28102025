@@ -786,4 +786,73 @@ body { background: #f4f6f9; color: #333; line-height: 1.6; }
   gap: 10px;
 }
 
+/* LOGS */
+.logs-table-container {
+  overflow-x: auto;
+  margin-top: 20px;
+  max-width: 1600px;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.logs-table th, .logs-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.logs-table th {
+  background: #3498db;
+  color: #fff;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.logs-table tbody tr:hover {
+  background: #f4f6f9;
+}
+
+.logs-table pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Segoe UI', monospace;
+  margin: 0;
+}
+
+.pagination {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.pagination .btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;       /* ancho fijo */
+  height: 36px;      /* alto fijo */
+  background: #3498db;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.pagination .btn:hover {
+  background: #2980b9;
+}
+.pagination .btn.active {
+  background: #2980b9;
+  font-weight: bold;
+}
 

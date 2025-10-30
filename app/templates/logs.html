@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+<h2>Logs del sistema</h2>
+
+<div class="logs-table-container">
+  <table class="logs-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tipo</th>
+        <th>Ticket</th>
+        <th>Usuario</th>
+        <th>Dirección</th>
+        <th>Payload</th>
+        <th>Estado</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.id }}</td>
+        <td>{{ log.event_type }}</td>
+        <td>{{ log.ticket_primary_key or '-' }}</td>
+        <td>{{ log.user_email or '-' }}</td>
+        <td>{{ log.direction or '-' }}</td>
+        <td><pre>{{ log.payload }}</pre></td>
+        <td>{{ log.status or '-' }}</td>
+        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Paginación básica -->
+  <div class="pagination">
+  {% if offset > 0 %}
+    <a href="?limit={{ limit }}&offset={{ offset - limit }}" class="btn">«</a>
+  {% endif %}
+
+  {% for page in range(1, total_pages + 1) %}
+    {% set page_offset = (page - 1) * limit %}
+    <a href="?limit={{ limit }}&offset={{ page_offset }}"
+       class="btn {% if page == current_page %}active{% endif %}">{{ page }}</a>
+  {% endfor %}
+
+  {% if logs|length == limit %}
+    <a href="?limit={{ limit }}&offset={{ offset + limit }}" class="btn">»</a>
+  {% endif %}
+</div>
+{% endblock %}
+</div>
